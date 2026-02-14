@@ -1,0 +1,29 @@
+{% extends "teams/base.html" %}
+
+{% block title %}Log in{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="kicker">Welcome back</p>
+        <h1>Log in</h1>
+        <p class="muted">Use the account your team admin created.</p>
+    </div>
+</section>
+
+<form method="post" class="form-card form-narrow">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+        <label>
+            Username
+            {{ form.username }}
+        </label>
+        <label>
+            Password
+            {{ form.password }}
+        </label>
+    </div>
+    <button class="button" type="submit">Log in</button>
+</form>
+{% endblock %}

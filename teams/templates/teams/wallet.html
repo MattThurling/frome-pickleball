@@ -1,0 +1,19 @@
+{% extends "teams/base.html" %}
+
+{% block title %}Wallet{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="kicker">Wallet</p>
+        <h1>Your balance</h1>
+        <p class="muted">Use your balance to book paid events.</p>
+    </div>
+    <a class="button" href="{% url 'teams:wallet-topup' %}">Top up</a>
+</section>
+
+<div class="card">
+    <h2>£{{ wallet.balance|floatformat:2 }}</h2>
+    <p class="muted">Available now</p>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# Virtualenv
+.envrc
+.venv/
+venv/
+ENV/
+
+# Django
+*.log
+*.pot
+*.mo
+local_settings.py
+
+
+# Environment files
+.env
+
+# Static files (if collected)
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

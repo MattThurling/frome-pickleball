@@ -1,0 +1,330 @@
+from decimal import Decimal
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models import Count
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.views import View
+from django.views.generic import CreateView, DetailView, ListView
+
+from .forms import EventForm, TopUpForm
+from .models import (
+    Event,
+    EventSignup,
+    Team,
+    TeamMembership,
+    Wallet,
+    WalletTransaction,
+)
+
+try:
+    import stripe
+except ImportError:  # pragma: no cover - handled with a user-facing message
+    stripe = None
+
+
+class TeamListView(LoginRequiredMixin, ListView):
+    model = Team
+    template_name = "teams/team_list.html"
+    context_object_name = "teams"
+
+    def get_queryset(self):
+        return (
+            Team.objects.filter(memberships__user=self.request.user)
+            .distinct()
+            .order_by("name")
+        )
+
+
+class TeamDetailView(LoginRequiredMixin, DetailView):
+    model = Team
+    template_name = "teams/team_detail.html"
+    context_object_name = "team"
+    pk_url_kwarg = "team_id"
+
+    def get_queryset(self):
+        return Team.objects.filter(memberships__user=self.request.user).distinct()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        team = self.object
+        events = team.events.annotate(signup_count=Count("signups")).select_related(
+            "created_by"
+        )
+        my_events = events.filter(signups__user=self.request.user).distinct()
+        my_event_ids = set(my_events.values_list("id", flat=True))
+        is_admin = team.memberships.filter(
+            user=self.request.user, role=TeamMembership.Role.ADMIN
+        ).exists()
+        context.update(
+            {
+                "events": events,
+                "my_events": my_events,
+                "my_event_ids": my_event_ids,
+                "is_admin": is_admin,
+            }
+        )
+        return context
+
+
+class EventCreateView(LoginRequiredMixin, CreateView):
+    model = Event
+    form_class = EventForm
+    template_name = "teams/event_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.team = get_object_or_404(Team, pk=kwargs["team_id"])
+        is_admin = TeamMembership.objects.filter(
+            team=self.team, user=request.user, role=TeamMembership.Role.ADMIN
+        ).exists()
+        if not is_admin:
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["team"] = self.team
+        return context
+
+    def form_valid(self, form):
+        form.instance.team = self.team
+        form.instance.created_by = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("teams:team-detail", kwargs={"team_id": self.team.id})
+
+
+class EventSignupToggleView(LoginRequiredMixin, View):
+    def post(self, request, event_id):
+        event = get_object_or_404(Event.objects.select_related("team"), pk=event_id)
+        membership_exists = TeamMembership.objects.filter(
+            team=event.team, user=request.user
+        ).exists()
+        if not membership_exists:
+            raise PermissionDenied
+
+        wants_signup = request.POST.get("signup") == "1"
+        with transaction.atomic():
+            event = (
+                Event.objects.select_for_update()
+                .select_related("team")
+                .annotate(signup_count=Count("signups"))
+                .get(pk=event_id)
+            )
+            existing_signup = EventSignup.objects.filter(event=event, user=request.user)
+            already_signed_up = existing_signup.exists()
+            wallet, _ = Wallet.objects.get_or_create(user=request.user)
+            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+
+            if wants_signup:
+                if already_signed_up:
+                    messages.info(request, "You're already booked for this event.")
+                elif event.is_full:
+                    messages.error(request, "Sorry, this event is full.")
+                else:
+                    if event.price > 0 and wallet.balance < event.price:
+                        messages.error(
+                            request,
+                            "Insufficient wallet balance. Top up to book this event.",
+                        )
+                    else:
+                        EventSignup.objects.create(event=event, user=request.user)
+                        if event.price > 0:
+                            wallet.balance = wallet.balance - event.price
+                            wallet.save(update_fields=["balance"])
+                            WalletTransaction.objects.create(
+                                wallet=wallet,
+                                amount=-event.price,
+                                kind=WalletTransaction.Kind.EVENT_DEBIT,
+                                event=event,
+                            )
+                        messages.success(request, "You're booked in!")
+            elif already_signed_up:
+                existing_signup.delete()
+                if event.price > 0:
+                    wallet.balance = wallet.balance + event.price
+                    wallet.save(update_fields=["balance"])
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        amount=event.price,
+                        kind=WalletTransaction.Kind.EVENT_REFUND,
+                        event=event,
+                    )
+                messages.success(request, "You have been removed from the event.")
+
+        return redirect("teams:team-detail", team_id=event.team_id)
+
+
+class WalletView(LoginRequiredMixin, View):
+    def get(self, request):
+        wallet, _ = Wallet.objects.get_or_create(user=request.user)
+        session_id = request.GET.get("session_id")
+        if session_id:
+            if not settings.STRIPE_SECRET_KEY or stripe is None:
+                messages.error(request, "Stripe is not configured yet.")
+                return redirect("teams:wallet")
+
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+            try:
+                session = stripe.checkout.Session.retrieve(session_id)
+            except stripe.error.StripeError:
+                messages.error(request, "Unable to verify the Stripe session.")
+                return redirect("teams:wallet")
+
+            session_user_id = session.get("client_reference_id") or session.get(
+                "metadata", {}
+            ).get("user_id")
+            if str(session_user_id) != str(request.user.id):
+                messages.error(request, "This top-up session does not belong to you.")
+                return redirect("teams:wallet")
+
+            if session.get("payment_status") != "paid":
+                messages.info(request, "Payment is not complete yet.")
+                return redirect("teams:wallet")
+
+            amount_total = session.get("amount_total")
+            if amount_total is None:
+                messages.error(request, "Stripe did not return a payment amount.")
+                return redirect("teams:wallet")
+
+            payment_intent = session.get("payment_intent")
+            amount = Decimal(amount_total) / Decimal("100")
+            with transaction.atomic():
+                wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+                already_logged = WalletTransaction.objects.filter(
+                    stripe_session_id=session_id
+                ).exists()
+                if not already_logged:
+                    wallet.balance = wallet.balance + amount
+                    wallet.save(update_fields=["balance"])
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        amount=amount,
+                        kind=WalletTransaction.Kind.TOPUP,
+                        stripe_session_id=session_id,
+                        stripe_payment_intent=payment_intent or None,
+                    )
+                    messages.success(request, "Top-up applied to your wallet.")
+            return redirect("teams:wallet")
+        return render(request, "teams/wallet.html", {"wallet": wallet})
+
+
+class WalletTopUpView(LoginRequiredMixin, View):
+    def get(self, request):
+        form = TopUpForm()
+        return render(request, "teams/wallet_topup.html", {"form": form})
+
+    def post(self, request):
+        if not settings.STRIPE_SECRET_KEY:
+            messages.error(request, "Stripe is not configured yet.")
+            return redirect("teams:wallet")
+        if stripe is None:
+            messages.error(request, "Stripe package is not installed on the server.")
+            return redirect("teams:wallet")
+
+        form = TopUpForm(request.POST)
+        if not form.is_valid():
+            return render(request, "teams/wallet_topup.html", {"form": form})
+
+        amount = form.cleaned_data["amount"]
+        if amount <= 0:
+            messages.error(request, "Top up amount must be greater than zero.")
+            return render(request, "teams/wallet_topup.html", {"form": form})
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        amount_cents = int(amount * Decimal("100"))
+        success_url = request.build_absolute_uri(reverse("teams:wallet"))
+        success_url = f"{success_url}?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = request.build_absolute_uri(reverse("teams:wallet-topup"))
+
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": settings.STRIPE_CURRENCY,
+                        "product_data": {"name": "Wallet top-up"},
+                        "unit_amount": amount_cents,
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            client_reference_id=str(request.user.id),
+            metadata={"user_id": str(request.user.id)},
+        )
+        return redirect(session.url)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class StripeWebhookView(View):
+    def post(self, request):
+        if not settings.STRIPE_WEBHOOK_SECRET or stripe is None:
+            return HttpResponse(status=400)
+
+        payload = request.body
+        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+            )
+        except stripe.error.SignatureVerificationError:
+            return HttpResponse(status=400)
+        except ValueError:
+            return HttpResponse(status=400)
+
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            if session.get("payment_status") != "paid":
+                return HttpResponse(status=200)
+
+            user_id = session.get("client_reference_id") or session.get("metadata", {}).get(
+                "user_id"
+            )
+            amount_total = session.get("amount_total")
+            session_id = session.get("id")
+            payment_intent = session.get("payment_intent", "")
+
+            if not user_id or amount_total is None or not session_id:
+                return HttpResponse(status=200)
+
+            try:
+                user_id = int(user_id)
+            except (TypeError, ValueError):
+                return HttpResponse(status=200)
+
+            User = get_user_model()
+            if not User.objects.filter(pk=user_id).exists():
+                return HttpResponse(status=200)
+
+            amount = Decimal(amount_total) / Decimal("100")
+            wallet, _ = Wallet.objects.get_or_create(user_id=user_id)
+
+            with transaction.atomic():
+                wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+                already_logged = WalletTransaction.objects.filter(
+                    stripe_session_id=session_id
+                ).exists()
+                if not already_logged:
+                    wallet.balance = wallet.balance + amount
+                    wallet.save(update_fields=["balance"])
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        amount=amount,
+                        kind=WalletTransaction.Kind.TOPUP,
+                        stripe_session_id=session_id,
+                        stripe_payment_intent=payment_intent or None,
+                    )
+
+        return HttpResponse(status=200)

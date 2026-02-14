@@ -1,0 +1,33 @@
+{% extends "teams/base.html" %}
+
+{% block title %}Teams{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="kicker">Your teams</p>
+        <h1>Pick a team to manage or join an event</h1>
+    </div>
+</section>
+
+{% if teams %}
+    <div class="card-grid">
+        {% for team in teams %}
+            <article class="card">
+                <h2>{{ team.name }}</h2>
+                {% if team.description %}
+                    <p>{{ team.description }}</p>
+                {% else %}
+                    <p class="muted">No description yet.</p>
+                {% endif %}
+                <a class="button" href="{% url 'teams:team-detail' team.id %}">Open team</a>
+            </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty">
+        <h2>No teams yet</h2>
+        <p>Ask an admin to add you to a team, or create one in the admin panel.</p>
+    </div>
+{% endif %}
+{% endblock %}

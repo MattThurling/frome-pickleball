@@ -1,0 +1,47 @@
+{% extends "teams/base.html" %}
+
+{% block title %}Create event{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="kicker">New event</p>
+        <h1>Create an event for {{ team.name }}</h1>
+    </div>
+</section>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+        <label>
+            Title
+            {{ form.title }}
+        </label>
+        <label>
+            Starts at
+            {{ form.starts_at }}
+        </label>
+        <label>
+            Location
+            {{ form.location }}
+        </label>
+        <label>
+            Minimum participants
+            {{ form.min_participants }}
+        </label>
+        <label>
+            Maximum participants
+            {{ form.max_participants }}
+        </label>
+        <label>
+            Price
+            {{ form.price }}
+        </label>
+    </div>
+    <div class="form-actions">
+        <button class="button" type="submit">Create event</button>
+        <a class="button ghost" href="{% url 'teams:team-detail' team.id %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

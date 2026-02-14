@@ -1,0 +1,137 @@
+{% extends "teams/base.html" %}
+
+{% block title %}{{ team.name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="kicker">Team overview</p>
+        <h1>{{ team.name }}</h1>
+        {% if team.description %}
+            <p>{{ team.description }}</p>
+        {% endif %}
+    </div>
+    <div class="header-actions">
+        <div class="wallet-chip">
+            <span>Wallet</span>
+            <strong>£{{ wallet_balance|default:0|floatformat:2 }}</strong>
+            <a href="{% url 'teams:wallet-topup' %}">Top up</a>
+        </div>
+        {% if is_admin %}
+            <a class="button" href="{% url 'teams:event-create' team.id %}">Create event</a>
+        {% endif %}
+    </div>
+</section>
+
+<div class="tabs">
+    <button class="tab-button is-active" data-tab="events" type="button">Events</button>
+    <button class="tab-button" data-tab="my-events" type="button">My booked events</button>
+</div>
+
+<div class="tab-panel is-active" id="events">
+    {% if events %}
+        <div class="event-list">
+            {% for event in events %}
+                <article class="event-card">
+                    <div class="event-main">
+                        <h3>{{ event.title }}</h3>
+                        <div class="event-meta">
+                            <span>{{ event.starts_at|date:"M j, Y, g:i A" }}</span>
+                            {% if event.location %}
+                                <span>{{ event.location }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="event-stats">
+                            <span>{{ event.spots_taken }}/{{ event.max_participants }} spots</span>
+                            <span>Min {{ event.min_participants }}</span>
+                            <span>£{{ event.price|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="event-action">
+                        <form method="post" action="{% url 'teams:event-signup' event.id %}">
+                            {% csrf_token %}
+                            <label class="checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="signup"
+                                    value="1"
+                                    {% if event.id in my_event_ids %}checked{% endif %}
+                                    {% if event.is_full and event.id not in my_event_ids %}disabled{% endif %}
+                                >
+                                I'm in
+                            </label>
+                            {% if event.is_full and event.id not in my_event_ids %}
+                                <span class="status">Event full</span>
+                            {% endif %}
+                            <button class="button ghost" type="submit">Update</button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty">
+            <h2>No events yet</h2>
+            <p>Admins can create events to get things moving.</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="tab-panel" id="my-events">
+    {% if my_events %}
+        <div class="event-list">
+            {% for event in my_events %}
+                <article class="event-card">
+                    <div class="event-main">
+                        <h3>{{ event.title }}</h3>
+                        <div class="event-meta">
+                            <span>{{ event.starts_at|date:"M j, Y, g:i A" }}</span>
+                            {% if event.location %}
+                                <span>{{ event.location }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="event-stats">
+                            <span>{{ event.spots_taken }}/{{ event.max_participants }} spots</span>
+                            <span>Min {{ event.min_participants }}</span>
+                            <span>£{{ event.price|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="event-action">
+                        <span class="status success">Booked</span>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty">
+            <h2>No bookings yet</h2>
+            <p>Check the events tab to claim a spot.</p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    const buttons = document.querySelectorAll(".tab-button");
+    const panels = document.querySelectorAll(".tab-panel");
+
+    const activate = (tabId) => {
+        buttons.forEach((button) => {
+            button.classList.toggle("is-active", button.dataset.tab === tabId);
+        });
+        panels.forEach((panel) => {
+            panel.classList.toggle("is-active", panel.id === tabId);
+        });
+    };
+
+    buttons.forEach((button) => {
+        button.addEventListener("click", () => activate(button.dataset.tab));
+    });
+
+    if (window.location.hash) {
+        const tabId = window.location.hash.replace("#", "");
+        if (document.getElementById(tabId)) {
+            activate(tabId);
+        }
+    }
+</script>
+{% endblock %}
