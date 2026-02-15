@@ -308,6 +308,22 @@ main {
     gap: 12px;
 }
 
+.social-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.divider {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin: 12px 0 18px;
+}
+
 .flash-stack {
     display: flex;
     flex-direction: column;

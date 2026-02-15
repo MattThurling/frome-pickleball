@@ -19,9 +19,9 @@
                     <span class="user">Hi, {{ user.first_name|default:user.username }}</span>
                     <a href="{% url 'teams:team-list' %}">Teams</a>
                     <a href="{% url 'teams:wallet' %}">Wallet £{{ wallet_balance|default:0|floatformat:2 }}</a>
-                    <a href="{% url 'logout' %}">Log out</a>
+                    <a href="{% url 'account_logout' %}">Log out</a>
                 {% else %}
-                    <a href="{% url 'login' %}">Log in</a>
+                    <a href="{% url 'account_login' %}">Log in</a>
                 {% endif %}
             </nav>
         </div>
