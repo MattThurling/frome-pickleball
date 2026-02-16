@@ -1,0 +1,54 @@
+{% extends "teams/base.html" %}
+
+{% block title %}{{ event.title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="kicker">Event</p>
+        <h1>{{ event.title }}</h1>
+        <div class="event-meta">
+            <span>{{ event.starts_at|date:"l j F Y" }}</span>
+            <span>{{ event.starts_at|date:"g:iA" }} - {{ event.ends_at|date:"g:iA" }}</span>
+            {% if event.location %}
+                <span>{{ event.location }}</span>
+            {% else %}
+                <span class="muted">No location set</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="header-actions">
+        <form method="post" action="{% url 'teams:event-signup' event.id %}">
+            {% csrf_token %}
+            {% if is_booked %}
+                <button class="button ghost" type="submit" name="signup" value="0">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </button>
+            {% else %}
+                <button class="button" type="submit" name="signup" value="1" {% if event.is_full %}disabled{% endif %}>
+                    <i data-lucide="check"></i>
+                    Book
+                </button>
+                {% if event.is_full %}
+                    <span class="status">Event full</span>
+                {% endif %}
+            {% endif %}
+        </form>
+        <a class="button ghost" href="{% url 'teams:home' %}">Back to events</a>
+    </div>
+</section>
+
+<div class="card">
+    <h2>Players signed up ({{ signups|length }})</h2>
+    {% if signups %}
+        <ul class="player-list">
+            {% for signup in signups %}
+                <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted">No one has booked yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

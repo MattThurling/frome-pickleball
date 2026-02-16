@@ -58,6 +58,12 @@ a {
     font-weight: 600;
 }
 
+.logo .lucide {
+    width: 32px;
+    height: 32px;
+    stroke-width: 1.6;
+}
+
 .nav {
     display: flex;
     align-items: center;
@@ -144,6 +150,10 @@ main {
     box-shadow: var(--shadow);
 }
 
+.event-card {
+    padding-top: 0;
+}
+
 .card h2 {
     margin-top: 0;
 }
@@ -152,6 +162,7 @@ main {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     padding: 10px 18px;
     border-radius: 999px;
     background: var(--accent);
@@ -160,6 +171,12 @@ main {
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.lucide {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.8;
 }
 
 .button:hover {
@@ -245,6 +262,20 @@ main {
     background: rgba(30, 27, 22, 0.06);
     padding: 4px 10px;
     border-radius: 999px;
+}
+
+.player-list {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0 0;
+    display: grid;
+    gap: 8px;
+}
+
+.player-list li {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(30, 27, 22, 0.04);
 }
 
 .event-action {

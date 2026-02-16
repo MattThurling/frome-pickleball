@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
-from django.views.generic import CreateView
+from django.views.generic import CreateView, DetailView
 
 from .forms import EventForm, TopUpForm
 from .models import (
@@ -65,6 +65,34 @@ class HomeView(LoginRequiredMixin, View):
         )
 
 
+class EventDetailView(LoginRequiredMixin, DetailView):
+    model = Event
+    template_name = "teams/event_detail.html"
+    context_object_name = "event"
+    pk_url_kwarg = "event_id"
+
+    def get_queryset(self):
+        team = get_default_team()
+        return (
+            Event.objects.filter(team=team)
+            .select_related("team")
+            .prefetch_related("signups__user")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        event = self.object
+        TeamMembership.objects.get_or_create(
+            team=event.team,
+            user=self.request.user,
+            defaults={"role": TeamMembership.Role.MEMBER},
+        )
+        signups = event.signups.select_related("user").order_by("created_at")
+        context["signups"] = signups
+        context["is_booked"] = signups.filter(user=self.request.user).exists()
+        return context
+
+
 class EventCreateView(LoginRequiredMixin, CreateView):
     model = Event
     form_class = EventForm
@@ -107,7 +135,6 @@ class EventSignupToggleView(LoginRequiredMixin, View):
             event = (
                 Event.objects.select_for_update()
                 .select_related("team")
-                .annotate(signup_count=Count("signups"))
                 .get(pk=event_id)
             )
             existing_signup = EventSignup.objects.filter(event=event, user=request.user)

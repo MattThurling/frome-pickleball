@@ -8,12 +8,17 @@ class EventForm(forms.ModelForm):
         widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
         input_formats=["%Y-%m-%dT%H:%M"],
     )
+    ends_at = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
+        input_formats=["%Y-%m-%dT%H:%M"],
+    )
 
     class Meta:
         model = Event
         fields = [
             "title",
             "starts_at",
+            "ends_at",
             "location",
             "min_participants",
             "max_participants",
@@ -22,6 +27,14 @@ class EventForm(forms.ModelForm):
         widgets = {
             "location": forms.TextInput(attrs={"placeholder": "Gym, field, or link"}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        starts_at = cleaned_data.get("starts_at")
+        ends_at = cleaned_data.get("ends_at")
+        if starts_at and ends_at and ends_at <= starts_at:
+            self.add_error("ends_at", "End time must be after the start time.")
+        return cleaned_data
 
 
 class TopUpForm(forms.Form):

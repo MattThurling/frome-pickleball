@@ -18,7 +18,7 @@ class TeamMembershipAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ("title", "team", "starts_at", "max_participants", "price")
+    list_display = ("title", "team", "starts_at", "ends_at", "max_participants", "price")
     list_filter = ("team",)
     search_fields = ("title", "team__name")
 

@@ -37,6 +37,7 @@ class Event(models.Model):
     team = models.ForeignKey(Team, related_name="events", on_delete=models.CASCADE)
     title = models.CharField(max_length=140)
     starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
     location = models.CharField(max_length=200, blank=True)
     min_participants = models.PositiveIntegerField(default=0)
     max_participants = models.PositiveIntegerField()

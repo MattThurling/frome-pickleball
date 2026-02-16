@@ -13,17 +13,19 @@
 <body>
     <header class="site-header">
         <div class="container header-inner">
-            <a class="logo" href="{% url 'teams:home' %}">{{ team_name }}</a>
+            <a class="logo" href="{% url 'teams:home' %}" aria-label="{{ team_name }}" title="{{ team_name }}">
+                <i data-lucide="calendar-days"></i>
+            </a>
             <nav class="nav">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'teams:home' %}">Events</a>
-                    <a href="{% url 'account_logout' %}">Log out</a>
                     <div class="wallet-chip">
+                        <i data-lucide="wallet"></i>
                         <strong>£{{ wallet_balance|default:0|floatformat:2 }}</strong>
                         <a href="{% url 'teams:wallet' %}">Top up</a>
                     </div>
+                    <a href="{% url 'account_logout' %}"><i data-lucide="log-out"></i></a>
                 {% else %}
-                    <a href="{% url 'account_login' %}">Log in</a>
+                    <a href="{% url 'account_login' %}"><i data-lucide="log-in"></i>Log in</a>
                 {% endif %}
             </nav>
         </div>
@@ -39,5 +41,11 @@
         {% endif %}
         {% block content %}{% endblock %}
     </main>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    </script>
 </body>
 </html>
