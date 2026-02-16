@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
-from django.views.generic import CreateView, DetailView, ListView
+from django.views.generic import CreateView
 
 from .forms import EventForm, TopUpForm
 from .models import (
@@ -31,48 +31,38 @@ except ImportError:  # pragma: no cover - handled with a user-facing message
     stripe = None
 
 
-class TeamListView(LoginRequiredMixin, ListView):
-    model = Team
-    template_name = "teams/team_list.html"
-    context_object_name = "teams"
+def get_default_team():
+    team, _ = Team.objects.get_or_create(name=settings.TEAM_NAME)
+    return team
 
-    def get_queryset(self):
-        return (
-            Team.objects.filter(memberships__user=self.request.user)
-            .distinct()
-            .order_by("name")
+
+class HomeView(LoginRequiredMixin, View):
+    def get(self, request):
+        team = get_default_team()
+        TeamMembership.objects.get_or_create(
+            team=team,
+            user=request.user,
+            defaults={"role": TeamMembership.Role.MEMBER},
         )
-
-
-class TeamDetailView(LoginRequiredMixin, DetailView):
-    model = Team
-    template_name = "teams/team_detail.html"
-    context_object_name = "team"
-    pk_url_kwarg = "team_id"
-
-    def get_queryset(self):
-        return Team.objects.filter(memberships__user=self.request.user).distinct()
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        team = self.object
         events = team.events.annotate(signup_count=Count("signups")).select_related(
             "created_by"
         )
-        my_events = events.filter(signups__user=self.request.user).distinct()
+        my_events = events.filter(signups__user=request.user).distinct()
         my_event_ids = set(my_events.values_list("id", flat=True))
         is_admin = team.memberships.filter(
-            user=self.request.user, role=TeamMembership.Role.ADMIN
+            user=request.user, role=TeamMembership.Role.ADMIN
         ).exists()
-        context.update(
+        return render(
+            request,
+            "teams/team_detail.html",
             {
+                "team": team,
                 "events": events,
                 "my_events": my_events,
                 "my_event_ids": my_event_ids,
                 "is_admin": is_admin,
-            }
+            },
         )
-        return context
 
 
 class EventCreateView(LoginRequiredMixin, CreateView):
@@ -81,7 +71,7 @@ class EventCreateView(LoginRequiredMixin, CreateView):
     template_name = "teams/event_form.html"
 
     def dispatch(self, request, *args, **kwargs):
-        self.team = get_object_or_404(Team, pk=kwargs["team_id"])
+        self.team = get_default_team()
         is_admin = TeamMembership.objects.filter(
             team=self.team, user=request.user, role=TeamMembership.Role.ADMIN
         ).exists()
@@ -100,17 +90,17 @@ class EventCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse("teams:team-detail", kwargs={"team_id": self.team.id})
+        return reverse("teams:home")
 
 
 class EventSignupToggleView(LoginRequiredMixin, View):
     def post(self, request, event_id):
         event = get_object_or_404(Event.objects.select_related("team"), pk=event_id)
-        membership_exists = TeamMembership.objects.filter(
-            team=event.team, user=request.user
-        ).exists()
-        if not membership_exists:
-            raise PermissionDenied
+        TeamMembership.objects.get_or_create(
+            team=event.team,
+            user=request.user,
+            defaults={"role": TeamMembership.Role.MEMBER},
+        )
 
         wants_signup = request.POST.get("signup") == "1"
         with transaction.atomic():
@@ -161,7 +151,7 @@ class EventSignupToggleView(LoginRequiredMixin, View):
                     )
                 messages.success(request, "You have been removed from the event.")
 
-        return redirect("teams:team-detail", team_id=event.team_id)
+        return redirect("teams:home")
 
 
 class WalletView(LoginRequiredMixin, View):
@@ -215,15 +205,11 @@ class WalletView(LoginRequiredMixin, View):
                     )
                     messages.success(request, "Top-up applied to your wallet.")
             return redirect("teams:wallet")
-        return render(request, "teams/wallet.html", {"wallet": wallet})
-
-
-class WalletTopUpView(LoginRequiredMixin, View):
-    def get(self, request):
         form = TopUpForm()
-        return render(request, "teams/wallet_topup.html", {"form": form})
+        return render(request, "teams/wallet.html", {"wallet": wallet, "form": form})
 
     def post(self, request):
+        wallet, _ = Wallet.objects.get_or_create(user=request.user)
         if not settings.STRIPE_SECRET_KEY:
             messages.error(request, "Stripe is not configured yet.")
             return redirect("teams:wallet")
@@ -233,18 +219,22 @@ class WalletTopUpView(LoginRequiredMixin, View):
 
         form = TopUpForm(request.POST)
         if not form.is_valid():
-            return render(request, "teams/wallet_topup.html", {"form": form})
+            return render(
+                request, "teams/wallet.html", {"wallet": wallet, "form": form}
+            )
 
         amount = form.cleaned_data["amount"]
         if amount <= 0:
             messages.error(request, "Top up amount must be greater than zero.")
-            return render(request, "teams/wallet_topup.html", {"form": form})
+            return render(
+                request, "teams/wallet.html", {"wallet": wallet, "form": form}
+            )
 
         stripe.api_key = settings.STRIPE_SECRET_KEY
         amount_cents = int(amount * Decimal("100"))
         success_url = request.build_absolute_uri(reverse("teams:wallet"))
         success_url = f"{success_url}?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = request.build_absolute_uri(reverse("teams:wallet-topup"))
+        cancel_url = request.build_absolute_uri(reverse("teams:wallet"))
 
         session = stripe.checkout.Session.create(
             mode="payment",

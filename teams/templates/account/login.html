@@ -8,7 +8,7 @@
     <div>
         <p class="kicker">Welcome back</p>
         <h1>Log in</h1>
-        <p class="muted">Use your team account or sign in with Google or Facebook.</p>
+        <p class="muted">Use your team account or sign in with Google</p>
     </div>
 </section>
 
@@ -16,7 +16,7 @@
 {% if socialaccount_providers %}
     <div class="social-grid">
         {% for provider in socialaccount_providers %}
-            {% if provider.id == "google" or provider.id == "facebook" %}
+            {% if provider.id == "google" %}
                 <a class="button ghost" href="{% provider_login_url provider.id %}">
                     Continue with {{ provider.name }}
                 </a>

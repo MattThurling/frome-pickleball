@@ -5,22 +5,12 @@
 {% block content %}
 <section class="page-header">
     <div>
-        <p class="kicker">Team overview</p>
+        <p class="kicker">Events</p>
         <h1>{{ team.name }}</h1>
-        {% if team.description %}
-            <p>{{ team.description }}</p>
-        {% endif %}
     </div>
-    <div class="header-actions">
-        <div class="wallet-chip">
-            <span>Wallet</span>
-            <strong>£{{ wallet_balance|default:0|floatformat:2 }}</strong>
-            <a href="{% url 'teams:wallet-topup' %}">Top up</a>
-        </div>
-        {% if is_admin %}
-            <a class="button" href="{% url 'teams:event-create' team.id %}">Create event</a>
-        {% endif %}
-    </div>
+    {% if is_admin %}
+        <a class="button" href="{% url 'teams:event-create' %}">Create event</a>
+    {% endif %}
 </section>
 
 <div class="tabs">
