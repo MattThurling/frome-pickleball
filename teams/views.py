@@ -204,7 +204,9 @@ class WalletView(LoginRequiredMixin, View):
                         stripe_payment_intent=payment_intent or None,
                     )
                     messages.success(request, "Top-up applied to your wallet.")
-            return redirect("teams:wallet")
+                else:
+                    messages.info(request, "Top-up was already applied.")
+            return redirect("teams:home")
         form = TopUpForm()
         return render(request, "teams/wallet.html", {"wallet": wallet, "form": form})
 
