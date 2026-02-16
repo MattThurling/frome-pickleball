@@ -71,6 +71,17 @@ a {
     font-size: 0.95rem;
 }
 
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+}
+
 .user {
     color: var(--muted);
 }

@@ -23,9 +23,14 @@
                         <strong>£{{ wallet_balance|default:0|floatformat:2 }}</strong>
                         <a href="{% url 'teams:wallet' %}">Top up</a>
                     </div>
-                    <a href="{% url 'account_logout' %}"><i data-lucide="log-out"></i></a>
+                    <form method="post" action="{% url 'account_logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="icon-button" aria-label="Log out">
+                            <i data-lucide="log-out"></i>
+                        </button>
+                    </form>
                 {% else %}
-                    <a href="{% url 'account_login' %}"><i data-lucide="log-in"></i>Log in</a>
+                    <a href="{% url 'account_login' %}"><i data-lucide="log-in"></i></a>
                 {% endif %}
             </nav>
         </div>

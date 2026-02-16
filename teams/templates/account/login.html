@@ -12,20 +12,6 @@
     </div>
 </section>
 
-{% get_providers as socialaccount_providers %}
-{% if socialaccount_providers %}
-    <div class="social-grid">
-        {% for provider in socialaccount_providers %}
-            {% if provider.id == "google" %}
-                <a class="button ghost" href="{% provider_login_url provider.id %}">
-                    Continue with {{ provider.name }}
-                </a>
-            {% endif %}
-        {% endfor %}
-    </div>
-    <div class="divider">Or use email</div>
-{% endif %}
-
 <form method="post" class="form-card form-narrow">
     {% csrf_token %}
     {{ form.non_field_errors }}
@@ -44,4 +30,22 @@
         <a class="button ghost" href="{% url 'account_signup' %}">Create account</a>
     </div>
 </form>
+
+<div class="divider">Or</div>
+
+{% get_providers as socialaccount_providers %}
+{% if socialaccount_providers %}
+    <div class="social-grid">
+        {% for provider in socialaccount_providers %}
+            {% if provider.id == "google" %}
+                <a class="button ghost" href="{% provider_login_url provider.id %}">
+                    Continue with {{ provider.name }}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    
+{% endif %}
+
+
 {% endblock %}
