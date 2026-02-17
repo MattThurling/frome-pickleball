@@ -18,13 +18,15 @@
                     <div class="event-main">
                         <h3><a href="{% url 'teams:event-detail' event.id %}">{{ event.title }}</a></h3>
                         
-                        <p>{{ event.starts_at|date:"l j F Y" }}<br>
-                        {{ event.starts_at|date:"g:iA" }} - {{ event.ends_at|date:"g:iA" }}</p>
-                        {% if event.location %}
-                            <p>{{ event.location }}</p>
-                        {% else %}
-                            <p class="muted">No location set</p>
-                        {% endif %}
+                        <div class="event-meta">
+                            <span>{{ event.starts_at|date:"l j F Y" }}</span>
+                            <span>{{ event.starts_at|date:"g:iA" }} - {{ event.ends_at|date:"g:iA" }}</span>
+                            {% if event.venue %}
+                                <span>{{ event.venue.name }}</span>
+                            {% else %}
+                                <span class="muted">No venue set</span>
+                            {% endif %}
+                        </div>
 
                         <div class="event-stats">
                             <span>{{ event.spots_taken }}/{{ event.max_participants }} spots</span>
@@ -32,21 +34,51 @@
                         </div>
                     </div>
                     <div class="event-action">
-                        <form method="post" action="{% url 'teams:event-signup' event.id %}">
+                        <form method="post" action="{% url 'teams:event-signup' event.id %}" class="status-form">
                             {% csrf_token %}
-                            {% if event.id in my_event_ids %}
-                                <button class="button ghost" type="submit" name="signup" value="0">
-                                    <i data-lucide="x"></i>
-                                    Cancel
-                                </button>
-                            {% else %}
-                                <button class="button" type="submit" name="signup" value="1" {% if event.is_full %}disabled{% endif %}>
+                            <div class="status-buttons">
+                                <button
+                                    class="button{% if event.my_status == 'yes' %} is-selected{% endif %}"
+                                    type="submit"
+                                    name="status"
+                                    value="yes"
+                                    {% if event.is_full and event.my_status != 'yes' %}disabled{% endif %}
+                                >
                                     <i data-lucide="check"></i>
-                                    Book
+                                    Yes
                                 </button>
-                                {% if event.is_full %}
-                                    <span class="status">Event full</span>
+                                <button
+                                    class="button ghost status-maybe{% if event.my_status == 'maybe' %} is-selected{% endif %}"
+                                    type="submit"
+                                    name="status"
+                                    value="maybe"
+                                >
+                                    <i data-lucide="help-circle"></i>
+                                    Maybe
+                                </button>
+                                <button
+                                    class="button ghost status-no{% if event.my_status == 'no' %} is-selected{% endif %}"
+                                    type="submit"
+                                    name="status"
+                                    value="no"
+                                >
+                                    <i data-lucide="x"></i>
+                                    No
+                                </button>
+                                {% if event.is_full or event.my_status == 'waitlist' %}
+                                    <button
+                                        class="button ghost{% if event.my_status == 'waitlist' %} is-selected{% endif %}"
+                                        type="submit"
+                                        name="status"
+                                        value="waitlist"
+                                    >
+                                        <i data-lucide="clock"></i>
+                                        Waitlist
+                                    </button>
                                 {% endif %}
+                            </div>
+                            {% if event.is_full and event.my_status != 'yes' %}
+                                <span class="status">Event full</span>
                             {% endif %}
                         </form>
                     </div>
@@ -71,10 +103,10 @@
                         <div class="event-meta">
                             <span>{{ event.starts_at|date:"l j F Y" }}</span>
                             <span>{{ event.starts_at|date:"g:iA" }} - {{ event.ends_at|date:"g:iA" }}</span>
-                            {% if event.location %}
-                                <span>{{ event.location }}</span>
+                            {% if event.venue %}
+                                <span>{{ event.venue.name }}</span>
                             {% else %}
-                                <span class="muted">No location set</span>
+                                <span class="muted">No venue set</span>
                             {% endif %}
                         </div>
                         <div class="event-stats">

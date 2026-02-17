@@ -12,6 +12,19 @@ class Team(models.Model):
         return self.name
 
 
+class Venue(models.Model):
+    name = models.CharField(max_length=140)
+    address_line1 = models.CharField(max_length=200)
+    address_line2 = models.CharField(max_length=200, blank=True)
+    city = models.CharField(max_length=120, blank=True)
+    postcode = models.CharField(max_length=20)
+    url = models.URLField(blank=True)
+    info = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+
 class TeamMembership(models.Model):
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
@@ -38,7 +51,9 @@ class Event(models.Model):
     title = models.CharField(max_length=140)
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
-    location = models.CharField(max_length=200, blank=True)
+    venue = models.ForeignKey(
+        Venue, related_name="events", on_delete=models.SET_NULL, null=True, blank=True
+    )
     min_participants = models.PositiveIntegerField(default=0)
     max_participants = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
@@ -62,9 +77,11 @@ class Event(models.Model):
 
     @property
     def spots_taken(self):
+        if hasattr(self, "yes_count"):
+            return self.yes_count
         if hasattr(self, "signup_count"):
             return self.signup_count
-        return self.signups.count()
+        return self.signups.filter(status=EventSignup.Status.YES).count()
 
     @property
     def spots_left(self):
@@ -76,9 +93,18 @@ class Event(models.Model):
 
 
 class EventSignup(models.Model):
+    class Status(models.TextChoices):
+        YES = "yes", "Yes"
+        MAYBE = "maybe", "Maybe"
+        NO = "no", "No"
+        WAITLIST = "waitlist", "Waitlist"
+
     event = models.ForeignKey(Event, related_name="signups", on_delete=models.CASCADE)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, related_name="event_signups", on_delete=models.CASCADE
+    )
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.YES
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -88,7 +114,7 @@ class EventSignup(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user} -> {self.event}"
+        return f"{self.user} -> {self.event} ({self.status})"
 
 
 class Wallet(models.Model):

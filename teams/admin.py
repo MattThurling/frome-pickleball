@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import Event, EventSignup, Team, TeamMembership, Wallet, WalletTransaction
+from .models import (
+    Event,
+    EventSignup,
+    Team,
+    TeamMembership,
+    Venue,
+    Wallet,
+    WalletTransaction,
+)
 
 
 @admin.register(Team)
@@ -18,15 +26,29 @@ class TeamMembershipAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ("title", "team", "starts_at", "ends_at", "max_participants", "price")
+    list_display = (
+        "title",
+        "team",
+        "starts_at",
+        "ends_at",
+        "venue",
+        "max_participants",
+        "price",
+    )
     list_filter = ("team",)
     search_fields = ("title", "team__name")
 
 
 @admin.register(EventSignup)
 class EventSignupAdmin(admin.ModelAdmin):
-    list_display = ("event", "user", "created_at")
-    list_filter = ("event__team",)
+    list_display = ("event", "user", "status", "created_at")
+    list_filter = ("event__team", "status")
+
+
+@admin.register(Venue)
+class VenueAdmin(admin.ModelAdmin):
+    list_display = ("name", "city", "postcode")
+    search_fields = ("name", "address_line1", "city", "postcode")
 
 
 @admin.register(Wallet)

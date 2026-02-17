@@ -1,9 +1,13 @@
 from django import forms
 
-from .models import Event
+from .models import Event, Venue
 
 
 class EventForm(forms.ModelForm):
+    venue = forms.ModelChoiceField(
+        queryset=Venue.objects.all().order_by("name"),
+        empty_label="Select a venue",
+    )
     starts_at = forms.DateTimeField(
         widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
         input_formats=["%Y-%m-%dT%H:%M"],
@@ -19,14 +23,12 @@ class EventForm(forms.ModelForm):
             "title",
             "starts_at",
             "ends_at",
-            "location",
+            "venue",
             "min_participants",
             "max_participants",
             "price",
         ]
-        widgets = {
-            "location": forms.TextInput(attrs={"placeholder": "Gym, field, or link"}),
-        }
+        widgets = {}
 
     def clean(self):
         cleaned_data = super().clean()

@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import CharField, Count, OuterRef, Q, Subquery
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -44,11 +44,23 @@ class HomeView(LoginRequiredMixin, View):
             user=request.user,
             defaults={"role": TeamMembership.Role.MEMBER},
         )
-        events = team.events.annotate(signup_count=Count("signups")).select_related(
-            "created_by"
+        user_status = EventSignup.objects.filter(
+            event=OuterRef("pk"), user=request.user
+        ).values("status")[:1]
+        events = (
+            team.events.annotate(
+                yes_count=Count(
+                    "signups",
+                    filter=Q(signups__status=EventSignup.Status.YES),
+                ),
+                my_status=Subquery(user_status, output_field=CharField()),
+            )
+            .select_related("created_by", "venue")
+            .order_by("starts_at")
         )
-        my_events = events.filter(signups__user=request.user).distinct()
-        my_event_ids = set(my_events.values_list("id", flat=True))
+        my_events = events.filter(
+            signups__user=request.user, signups__status=EventSignup.Status.YES
+        ).distinct()
         is_admin = team.memberships.filter(
             user=request.user, role=TeamMembership.Role.ADMIN
         ).exists()
@@ -59,7 +71,6 @@ class HomeView(LoginRequiredMixin, View):
                 "team": team,
                 "events": events,
                 "my_events": my_events,
-                "my_event_ids": my_event_ids,
                 "is_admin": is_admin,
             },
         )
@@ -75,7 +86,7 @@ class EventDetailView(LoginRequiredMixin, DetailView):
         team = get_default_team()
         return (
             Event.objects.filter(team=team)
-            .select_related("team")
+            .select_related("team", "venue")
             .prefetch_related("signups__user")
         )
 
@@ -88,8 +99,17 @@ class EventDetailView(LoginRequiredMixin, DetailView):
             defaults={"role": TeamMembership.Role.MEMBER},
         )
         signups = event.signups.select_related("user").order_by("created_at")
-        context["signups"] = signups
-        context["is_booked"] = signups.filter(user=self.request.user).exists()
+        context["signups_yes"] = signups.filter(status=EventSignup.Status.YES)
+        context["signups_waitlist"] = signups.filter(
+            status=EventSignup.Status.WAITLIST
+        )
+        context["signups_maybe"] = signups.filter(status=EventSignup.Status.MAYBE)
+        context["signups_no"] = signups.filter(status=EventSignup.Status.NO)
+        context["my_status"] = (
+            signups.filter(user=self.request.user)
+            .values_list("status", flat=True)
+            .first()
+        )
         return context
 
 
@@ -130,43 +150,68 @@ class EventSignupToggleView(LoginRequiredMixin, View):
             defaults={"role": TeamMembership.Role.MEMBER},
         )
 
-        wants_signup = request.POST.get("signup") == "1"
+        requested_status = request.POST.get("status")
+        if not requested_status:
+            requested_status = (
+                EventSignup.Status.YES
+                if request.POST.get("signup") == "1"
+                else EventSignup.Status.NO
+            )
+        if requested_status not in EventSignup.Status.values:
+            messages.error(request, "Invalid response.")
+            return redirect("teams:home")
+
         with transaction.atomic():
             event = (
                 Event.objects.select_for_update()
                 .select_related("team")
                 .get(pk=event_id)
             )
-            existing_signup = EventSignup.objects.filter(event=event, user=request.user)
-            already_signed_up = existing_signup.exists()
+            signup = (
+                EventSignup.objects.select_for_update()
+                .filter(event=event, user=request.user)
+                .first()
+            )
+            current_status = signup.status if signup else None
             wallet, _ = Wallet.objects.get_or_create(user=request.user)
             wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
 
-            if wants_signup:
-                if already_signed_up:
-                    messages.info(request, "You're already booked for this event.")
-                elif event.is_full:
-                    messages.error(request, "Sorry, this event is full.")
-                else:
-                    if event.price > 0 and wallet.balance < event.price:
-                        messages.error(
-                            request,
-                            "Insufficient wallet balance. Top up to book this event.",
-                        )
-                    else:
-                        EventSignup.objects.create(event=event, user=request.user)
-                        if event.price > 0:
-                            wallet.balance = wallet.balance - event.price
-                            wallet.save(update_fields=["balance"])
-                            WalletTransaction.objects.create(
-                                wallet=wallet,
-                                amount=-event.price,
-                                kind=WalletTransaction.Kind.EVENT_DEBIT,
-                                event=event,
-                            )
-                        messages.success(request, "You're booked in!")
-            elif already_signed_up:
-                existing_signup.delete()
+            yes_count = EventSignup.objects.filter(
+                event=event, status=EventSignup.Status.YES
+            ).count()
+            spots_left = event.max_participants - yes_count
+
+            message_sent = False
+
+            if (
+                requested_status == EventSignup.Status.YES
+                and current_status != EventSignup.Status.YES
+            ):
+                if spots_left <= 0:
+                    requested_status = EventSignup.Status.WAITLIST
+                    messages.info(
+                        request, "Event is full. You've been added to the waitlist."
+                    )
+                    message_sent = True
+                elif event.price > 0 and wallet.balance < event.price:
+                    messages.error(
+                        request,
+                        "Insufficient wallet balance. Top up to book this event.",
+                    )
+                    return redirect("teams:home")
+
+            if signup:
+                signup.status = requested_status
+                signup.save(update_fields=["status"])
+            else:
+                signup = EventSignup.objects.create(
+                    event=event, user=request.user, status=requested_status
+                )
+
+            if (
+                current_status == EventSignup.Status.YES
+                and requested_status != EventSignup.Status.YES
+            ):
                 if event.price > 0:
                     wallet.balance = wallet.balance + event.price
                     wallet.save(update_fields=["balance"])
@@ -176,9 +221,71 @@ class EventSignupToggleView(LoginRequiredMixin, View):
                         kind=WalletTransaction.Kind.EVENT_REFUND,
                         event=event,
                     )
-                messages.success(request, "You have been removed from the event.")
+                self._promote_waitlist(event, exclude_user_id=request.user.id)
+
+            if (
+                current_status != EventSignup.Status.YES
+                and requested_status == EventSignup.Status.YES
+            ):
+                if event.price > 0:
+                    wallet.balance = wallet.balance - event.price
+                    wallet.save(update_fields=["balance"])
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        amount=-event.price,
+                        kind=WalletTransaction.Kind.EVENT_DEBIT,
+                        event=event,
+                    )
+
+            if not message_sent and current_status != requested_status:
+                if requested_status == EventSignup.Status.YES:
+                    messages.success(request, "You're booked in!")
+                elif requested_status == EventSignup.Status.WAITLIST:
+                    messages.info(request, "You're on the waitlist.")
+                elif requested_status == EventSignup.Status.MAYBE:
+                    messages.info(request, "Marked as maybe.")
+                elif requested_status == EventSignup.Status.NO:
+                    messages.info(request, "Marked as not attending.")
 
         return redirect("teams:home")
+
+    @staticmethod
+    def _promote_waitlist(event, exclude_user_id=None):
+        yes_count = EventSignup.objects.filter(
+            event=event, status=EventSignup.Status.YES
+        ).count()
+        spots_left = event.max_participants - yes_count
+        if spots_left <= 0:
+            return
+
+        waitlist = (
+            EventSignup.objects.select_for_update()
+            .filter(event=event, status=EventSignup.Status.WAITLIST)
+            .exclude(user_id=exclude_user_id)
+            .order_by("created_at")
+        )
+
+        for signup in waitlist:
+            if spots_left <= 0:
+                break
+            wallet, _ = Wallet.objects.get_or_create(user=signup.user)
+            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+
+            if event.price > 0 and wallet.balance < event.price:
+                continue
+
+            signup.status = EventSignup.Status.YES
+            signup.save(update_fields=["status"])
+            if event.price > 0:
+                wallet.balance = wallet.balance - event.price
+                wallet.save(update_fields=["balance"])
+                WalletTransaction.objects.create(
+                    wallet=wallet,
+                    amount=-event.price,
+                    kind=WalletTransaction.Kind.EVENT_DEBIT,
+                    event=event,
+                )
+            spots_left -= 1
 
 
 class WalletView(LoginRequiredMixin, View):

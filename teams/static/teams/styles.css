@@ -266,6 +266,11 @@ main {
 }
 
 .event-meta {
+    flex-direction: column;
+    gap: 4px;
+}
+
+.event-meta {
     margin: 6px 0 8px;
 }
 
@@ -300,6 +305,51 @@ main {
     flex-direction: column;
     gap: 8px;
     align-items: flex-start;
+}
+
+.status-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.button.is-selected {
+    background: var(--accent-dark);
+}
+
+.button.ghost.is-selected {
+    background: rgba(28, 124, 112, 0.12);
+    border-color: var(--accent-dark);
+    color: var(--accent-dark);
+}
+
+.button.ghost.status-maybe {
+    border-color: #d9a441;
+    color: #b07000;
+}
+
+.button.ghost.status-maybe:hover,
+.button.ghost.status-maybe.is-selected {
+    background: rgba(217, 164, 65, 0.18);
+    border-color: #c79335;
+    color: #9a5f00;
+}
+
+.button.ghost.status-no {
+    border-color: #c85b4c;
+    color: #a44236;
+}
+
+.button.ghost.status-no:hover,
+.button.ghost.status-no.is-selected {
+    background: rgba(200, 91, 76, 0.16);
+    border-color: #b24d41;
+    color: #8b352b;
+}
+
+.card-stack {
+    display: grid;
+    gap: 16px;
 }
 
 .status {
