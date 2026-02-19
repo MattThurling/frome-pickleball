@@ -183,6 +183,28 @@ SOCIALACCOUNT_ADAPTER = "teams.social_adapters.SocialAccountAdapter"
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
 
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = env_str(
+    "ACCOUNT_DEFAULT_HTTP_PROTOCOL", "http" if DEBUG else "https"
+)
+
+EMAIL_BACKEND = env_str(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = env_str("EMAIL_HOST", "")
+EMAIL_PORT = int(env_str("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = env_str("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env_str("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = int(env_str("EMAIL_TIMEOUT", "10"))
+DEFAULT_FROM_EMAIL = env_str(
+    "DEFAULT_FROM_EMAIL", "Frome Pickleball <noreply@example.com>"
+)
+SERVER_EMAIL = env_str("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+
 STRIPE_PUBLIC_KEY = os.environ.get("STRIPE_PUBLIC_KEY", "")
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
