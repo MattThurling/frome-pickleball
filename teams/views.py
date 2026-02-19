@@ -53,6 +53,10 @@ class HomeView(LoginRequiredMixin, View):
                     "signups",
                     filter=Q(signups__status=EventSignup.Status.YES),
                 ),
+                waitlist_count=Count(
+                    "signups",
+                    filter=Q(signups__status=EventSignup.Status.WAITLIST),
+                ),
                 my_status=Subquery(user_status, output_field=CharField()),
             )
             .select_related("created_by", "venue")
@@ -87,6 +91,12 @@ class EventDetailView(LoginRequiredMixin, DetailView):
         return (
             Event.objects.filter(team=team)
             .select_related("team", "venue")
+            .annotate(
+                waitlist_count=Count(
+                    "signups",
+                    filter=Q(signups__status=EventSignup.Status.WAITLIST),
+                )
+            )
             .prefetch_related("signups__user")
         )
 

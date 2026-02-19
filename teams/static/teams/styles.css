@@ -5,6 +5,8 @@
     --muted: #6f665c;
     --accent: #1c7c70;
     --accent-dark: #155f56;
+    --waitlist: #2a9da5;
+    --waitlist-dark: #1f7c84;
     --line: #e6dfd6;
     --shadow: 0 18px 40px rgba(30, 27, 22, 0.08);
 }
@@ -195,10 +197,22 @@ main {
     transform: translateY(-1px);
 }
 
+.button:disabled {
+    cursor: default;
+    transform: none;
+    opacity: 0.9;
+}
+
+.button:disabled:hover {
+    background: inherit;
+    transform: none;
+}
+
 .button.ghost {
     background: transparent;
     color: var(--accent);
     border: 1px solid var(--accent);
+    font-weight: 400;
 }
 
 .button.ghost:hover {
@@ -313,14 +327,29 @@ main {
     gap: 8px;
 }
 
-.button.is-selected {
-    background: var(--accent-dark);
+.button.status-yes.is-selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 700;
 }
 
-.button.ghost.is-selected {
-    background: rgba(28, 124, 112, 0.12);
-    border-color: var(--accent-dark);
-    color: var(--accent-dark);
+.button.ghost.status-waitlist {
+    border-color: var(--waitlist);
+    color: var(--waitlist-dark);
+}
+
+.button.ghost.status-waitlist:hover {
+    background: rgba(42, 157, 165, 0.12);
+    border-color: var(--waitlist-dark);
+    color: var(--waitlist-dark);
+}
+
+.button.status-waitlist.is-selected {
+    background: var(--waitlist);
+    border-color: var(--waitlist);
+    color: #fff;
+    font-weight: 700;
 }
 
 .button.ghost.status-maybe {
@@ -328,11 +357,18 @@ main {
     color: #b07000;
 }
 
-.button.ghost.status-maybe:hover,
-.button.ghost.status-maybe.is-selected {
+.button.ghost.status-maybe:hover {
     background: rgba(217, 164, 65, 0.18);
     border-color: #c79335;
     color: #9a5f00;
+}
+
+.button.status-maybe.is-selected,
+.button.ghost.status-maybe.is-selected {
+    background: #d9a441;
+    border-color: #d9a441;
+    color: #fff;
+    font-weight: 700;
 }
 
 .button.ghost.status-no {
@@ -340,11 +376,22 @@ main {
     color: #a44236;
 }
 
-.button.ghost.status-no:hover,
-.button.ghost.status-no.is-selected {
+.button.ghost.status-no:hover {
     background: rgba(200, 91, 76, 0.16);
     border-color: #b24d41;
     color: #8b352b;
+}
+
+.button.status-no.is-selected,
+.button.ghost.status-no.is-selected {
+    background: #c85b4c;
+    border-color: #c85b4c;
+    color: #fff;
+    font-weight: 700;
+}
+
+.leave-waitlist {
+    margin-top: 6px;
 }
 
 .card-stack {
