@@ -180,6 +180,7 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_ADAPTER = "teams.adapters.AccountAdapter"
 SOCIALACCOUNT_ADAPTER = "teams.social_adapters.SocialAccountAdapter"
+ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
 
