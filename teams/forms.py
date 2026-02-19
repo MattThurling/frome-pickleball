@@ -1,4 +1,5 @@
 from django import forms
+from allauth.account.forms import SignupForm
 
 from .models import Event, Venue
 
@@ -46,3 +47,22 @@ class TopUpForm(forms.Form):
         max_digits=10,
         widget=forms.NumberInput(attrs={"step": "0.01", "min": "1"}),
     )
+
+
+class CustomSignupForm(SignupForm):
+    full_name = forms.CharField(
+        max_length=150,
+        required=False,
+        label="Full name",
+        widget=forms.TextInput(attrs={"placeholder": "Jane Smith"}),
+    )
+
+    def save(self, request):
+        user = super().save(request)
+        full_name = (self.cleaned_data.get("full_name") or "").strip()
+        if full_name:
+            parts = full_name.split()
+            user.first_name = parts[0]
+            user.last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+            user.save(update_fields=["first_name", "last_name"])
+        return user
