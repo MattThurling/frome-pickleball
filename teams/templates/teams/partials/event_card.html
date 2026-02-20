@@ -1,0 +1,101 @@
+<article class="event-card">
+    <div class="event-main">
+        <h3><a href="{% url 'teams:event-detail' event.id %}">{{ event.title }}</a></h3>
+        <div class="event-meta">
+            <span>{{ event.starts_at|date:"l j F Y" }}</span>
+            <span>{{ event.starts_at|date:"g:iA" }} - {{ event.ends_at|date:"g:iA" }}</span>
+            {% if event.venue %}
+                <span>{{ event.venue.name }}</span>
+            {% else %}
+                <span class="muted">No venue set</span>
+            {% endif %}
+        </div>
+        <div class="event-stats">
+            <span>{{ event.spots_taken }}/{{ event.max_participants }} spots</span>
+            <span>£{{ event.price|floatformat:2 }}</span>
+        </div>
+    </div>
+    <div class="event-action">
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'teams:event-signup' event.id %}" class="status-form">
+                {% csrf_token %}
+                {% if event.my_status == 'yes' %}
+                    <div class="status-buttons">
+                        <button class="button status-yes is-selected" type="submit" name="status" value="yes" disabled>
+                            <i data-lucide="check"></i>
+                            Booked
+                        </button>
+                        <button class="button ghost status-no" type="submit" name="status" value="no">
+                            Refund &amp; cancel
+                        </button>
+                    </div>
+                {% else %}
+                    <div class="status-buttons">
+                        {% if event.is_full %}
+                            <button
+                                class="button{% if event.my_status != 'waitlist' %} ghost{% endif %} status-waitlist{% if event.my_status == 'waitlist' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="waitlist"
+                                {% if event.my_status == 'waitlist' %}disabled{% endif %}
+                            >
+                                {% if event.my_status == 'waitlist' %}
+                                    #{{ event.waitlist_count|default:0 }} in waitlist
+                                {% else %}
+                                    Join waitlist
+                                {% endif %}
+                            </button>
+                        {% else %}
+                            <button
+                                class="button{% if event.my_status != 'yes' %} ghost{% endif %} status-yes{% if event.my_status == 'yes' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="yes"
+                                {% if event.my_status == 'yes' %}disabled{% endif %}
+                            >
+                                {% if event.my_status == 'yes' %}
+                                    <i data-lucide="check"></i>
+                                {% endif %}
+                                Book now
+                            </button>
+                        {% endif %}
+                        {% if event.my_status != 'waitlist' %}
+                            <button
+                                class="button{% if event.my_status != 'maybe' %} ghost{% endif %} status-maybe{% if event.my_status == 'maybe' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="maybe"
+                                {% if event.my_status == 'maybe' %}disabled{% endif %}
+                            >
+                                {% if event.my_status == 'maybe' %}
+                                    <i data-lucide="help-circle"></i>
+                                {% endif %}
+                                Maybe
+                            </button>
+                            <button
+                                class="button{% if event.my_status != 'no' %} ghost{% endif %} status-no{% if event.my_status == 'no' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="no"
+                                {% if event.my_status == 'no' %}disabled{% endif %}
+                            >
+                                {% if event.my_status == 'no' %}
+                                    <i data-lucide="x"></i>
+                                {% endif %}
+                                No
+                            </button>
+                        {% else %}
+                            <button class="button ghost status-no leave-waitlist" type="submit" name="status" value="no">
+                                Leave waitlist
+                            </button>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </form>
+        {% else %}
+            <a class="button ghost" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">
+                Log in to book
+            </a>
+        {% endif %}
+    </div>
+</article>

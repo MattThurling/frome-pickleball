@@ -42,12 +42,7 @@
         {% for provider in socialaccount_providers %}
             {% if provider.id == "google" %}
                 <a class="social-button google" href="{% provider_login_url provider.id %}">
-                    <svg class="social-icon google" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-                        <path fill="#EA4335" d="M24 9.5c3.4 0 6.4 1.2 8.8 3.4l6-6C34.8 3.4 29.7 1 24 1 14.7 1 6.8 6.3 3 14.1l7 5.4C12.1 13.4 17.6 9.5 24 9.5z"/>
-                        <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v7.8h12.7c-.3 2.1-1.9 5.3-5.6 7.5l8.6 6.6c5-4.6 7.8-11.3 7.8-17.8z"/>
-                        <path fill="#FBBC05" d="M10 28.4c-1-2.1-1.6-4.4-1.6-6.9s.6-4.8 1.6-6.9l-7-5.4C1.1 12.5 0 16.1 0 21.5s1.1 9 3 12.3l7-5.4z"/>
-                        <path fill="#34A853" d="M24 47c5.7 0 10.5-1.9 14-5.1l-8.6-6.6c-2.3 1.5-5.2 2.6-9.4 2.6-6.4 0-11.8-3.9-13.9-9.6l-7 5.4C6.8 41.7 14.7 47 24 47z"/>
-                    </svg>
+                    <img class="social-icon" src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/48px.svg" alt="" loading="lazy" referrerpolicy="no-referrer">
                     Continue with Google
                 </a>
             {% endif %}

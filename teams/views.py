@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import CharField, Count, OuterRef, Q, Subquery
+from django.db.models import CharField, Count, OuterRef, Q, Subquery, Value
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -36,17 +36,23 @@ def get_default_team():
     return team
 
 
-class HomeView(LoginRequiredMixin, View):
+class HomeView(View):
     def get(self, request):
         team = get_default_team()
-        TeamMembership.objects.get_or_create(
-            team=team,
-            user=request.user,
-            defaults={"role": TeamMembership.Role.MEMBER},
-        )
-        user_status = EventSignup.objects.filter(
-            event=OuterRef("pk"), user=request.user
-        ).values("status")[:1]
+        is_authenticated = request.user.is_authenticated
+        if is_authenticated:
+            TeamMembership.objects.get_or_create(
+                team=team,
+                user=request.user,
+                defaults={"role": TeamMembership.Role.MEMBER},
+            )
+            user_status = EventSignup.objects.filter(
+                event=OuterRef("pk"), user=request.user
+            ).values("status")[:1]
+            my_status = Subquery(user_status, output_field=CharField())
+        else:
+            my_status = Value(None, output_field=CharField())
+
         events = (
             team.events.annotate(
                 yes_count=Count(
@@ -57,17 +63,21 @@ class HomeView(LoginRequiredMixin, View):
                     "signups",
                     filter=Q(signups__status=EventSignup.Status.WAITLIST),
                 ),
-                my_status=Subquery(user_status, output_field=CharField()),
+                my_status=my_status,
             )
             .select_related("created_by", "venue")
             .order_by("starts_at")
         )
-        my_events = events.filter(
-            signups__user=request.user, signups__status=EventSignup.Status.YES
-        ).distinct()
-        is_admin = team.memberships.filter(
-            user=request.user, role=TeamMembership.Role.ADMIN
-        ).exists()
+        if is_authenticated:
+            my_events = events.filter(
+                signups__user=request.user, signups__status=EventSignup.Status.YES
+            ).distinct()
+            is_admin = team.memberships.filter(
+                user=request.user, role=TeamMembership.Role.ADMIN
+            ).exists()
+        else:
+            my_events = events.none()
+            is_admin = False
         return render(
             request,
             "teams/team_detail.html",
@@ -76,11 +86,12 @@ class HomeView(LoginRequiredMixin, View):
                 "events": events,
                 "my_events": my_events,
                 "is_admin": is_admin,
+                "show_my_events_tab": is_authenticated,
             },
         )
 
 
-class EventDetailView(LoginRequiredMixin, DetailView):
+class EventDetailView(DetailView):
     model = Event
     template_name = "teams/event_detail.html"
     context_object_name = "event"
@@ -103,6 +114,13 @@ class EventDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         event = self.object
+        is_authenticated = self.request.user.is_authenticated
+        context["show_signup_lists"] = is_authenticated
+        context["my_status"] = None
+
+        if not is_authenticated:
+            return context
+
         TeamMembership.objects.get_or_create(
             team=event.team,
             user=self.request.user,

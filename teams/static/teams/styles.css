@@ -390,10 +390,6 @@ main {
     font-weight: 700;
 }
 
-.leave-waitlist {
-    margin-top: 6px;
-}
-
 .card-stack {
     display: grid;
     gap: 16px;
@@ -453,6 +449,7 @@ main {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 12px;
+    width: min(100%, 480px);
     margin-bottom: 20px;
 }
 
@@ -478,12 +475,7 @@ main {
     height: 22px;
     flex-shrink: 0;
     display: block;
-}
-
-.social-button svg {
-    width: 22px;
-    height: 22px;
-    display: block;
+    object-fit: contain;
 }
 
 .social-button.google {
@@ -511,6 +503,7 @@ main {
 }
 
 .divider {
+    width: min(100%, 480px);
     text-align: center;
     color: var(--muted);
     font-size: 0.85rem;

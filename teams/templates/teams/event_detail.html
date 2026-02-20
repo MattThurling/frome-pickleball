@@ -22,82 +22,87 @@
         </div>
     </div>
     <div class="header-actions">
-        <form method="post" action="{% url 'teams:event-signup' event.id %}" class="status-form">
-            {% csrf_token %}
-            {% if my_status == 'yes' %}
-                <div class="status-buttons">
-                    <button class="button status-yes is-selected" type="submit" name="status" value="yes" disabled>
-                        <i data-lucide="check"></i>
-                        Booked
-                    </button>
-                    <button class="button ghost status-no" type="submit" name="status" value="no">
-                        Refund &amp; cancel
-                    </button>
-                </div>
-            {% else %}
-                <div class="status-buttons">
-                    {% if event.is_full %}
-                        <button
-                            class="button{% if my_status != 'waitlist' %} ghost{% endif %} status-waitlist{% if my_status == 'waitlist' %} is-selected{% endif %}"
-                            type="submit"
-                            name="status"
-                            value="waitlist"
-                            {% if my_status == 'waitlist' %}disabled{% endif %}
-                        >
-                            {% if my_status == 'waitlist' %}
-                                #{{ event.waitlist_count|default:0 }} in waitlist
-                            {% else %}
-                                Join waitlist
-                            {% endif %}
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'teams:event-signup' event.id %}" class="status-form">
+                {% csrf_token %}
+                {% if my_status == 'yes' %}
+                    <div class="status-buttons">
+                        <button class="button status-yes is-selected" type="submit" name="status" value="yes" disabled>
+                            <i data-lucide="check"></i>
+                            Booked
                         </button>
-                    {% else %}
-                        <button
-                            class="button{% if my_status != 'yes' %} ghost{% endif %} status-yes{% if my_status == 'yes' %} is-selected{% endif %}"
-                            type="submit"
-                            name="status"
-                            value="yes"
-                            {% if my_status == 'yes' %}disabled{% endif %}
-                        >
-                            {% if my_status == 'yes' %}
-                                <i data-lucide="check"></i>
-                            {% endif %}
-                            Book now
+                        <button class="button ghost status-no" type="submit" name="status" value="no">
+                            Refund &amp; cancel
                         </button>
-                    {% endif %}
-                    {% if my_status != 'waitlist' %}
-                        <button
-                            class="button{% if my_status != 'maybe' %} ghost{% endif %} status-maybe{% if my_status == 'maybe' %} is-selected{% endif %}"
-                            type="submit"
-                            name="status"
-                            value="maybe"
-                            {% if my_status == 'maybe' %}disabled{% endif %}
-                        >
-                            {% if my_status == 'maybe' %}
-                                <i data-lucide="help-circle"></i>
-                            {% endif %}
-                            Maybe
-                        </button>
-                        <button
-                            class="button{% if my_status != 'no' %} ghost{% endif %} status-no{% if my_status == 'no' %} is-selected{% endif %}"
-                            type="submit"
-                            name="status"
-                            value="no"
-                            {% if my_status == 'no' %}disabled{% endif %}
-                        >
-                            {% if my_status == 'no' %}
-                                <i data-lucide="x"></i>
-                            {% endif %}
-                            No
-                        </button>
-                    {% endif %}
-                </div>
-                {% if my_status == 'waitlist' %}
-                    <button class="button ghost status-no leave-waitlist" type="submit" name="status" value="no">
-                        Leave waitlist
-                    </button>
+                    </div>
+                {% else %}
+                    <div class="status-buttons">
+                        {% if event.is_full %}
+                            <button
+                                class="button{% if my_status != 'waitlist' %} ghost{% endif %} status-waitlist{% if my_status == 'waitlist' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="waitlist"
+                                {% if my_status == 'waitlist' %}disabled{% endif %}
+                            >
+                                {% if my_status == 'waitlist' %}
+                                    #{{ event.waitlist_count|default:0 }} in waitlist
+                                {% else %}
+                                    Join waitlist
+                                {% endif %}
+                            </button>
+                        {% else %}
+                            <button
+                                class="button{% if my_status != 'yes' %} ghost{% endif %} status-yes{% if my_status == 'yes' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="yes"
+                                {% if my_status == 'yes' %}disabled{% endif %}
+                            >
+                                {% if my_status == 'yes' %}
+                                    <i data-lucide="check"></i>
+                                {% endif %}
+                                Book now
+                            </button>
+                        {% endif %}
+                        {% if my_status != 'waitlist' %}
+                            <button
+                                class="button{% if my_status != 'maybe' %} ghost{% endif %} status-maybe{% if my_status == 'maybe' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="maybe"
+                                {% if my_status == 'maybe' %}disabled{% endif %}
+                            >
+                                {% if my_status == 'maybe' %}
+                                    <i data-lucide="help-circle"></i>
+                                {% endif %}
+                                Maybe
+                            </button>
+                            <button
+                                class="button{% if my_status != 'no' %} ghost{% endif %} status-no{% if my_status == 'no' %} is-selected{% endif %}"
+                                type="submit"
+                                name="status"
+                                value="no"
+                                {% if my_status == 'no' %}disabled{% endif %}
+                            >
+                                {% if my_status == 'no' %}
+                                    <i data-lucide="x"></i>
+                                {% endif %}
+                                No
+                            </button>
+                        {% else %}
+                            <button class="button ghost status-no leave-waitlist" type="submit" name="status" value="no">
+                                Leave waitlist
+                            </button>
+                        {% endif %}
+                    </div>
                 {% endif %}
-            {% endif %}
-        </form>
+            </form>
+        {% else %}
+            <a class="button ghost" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">
+                Log in to book
+            </a>
+        {% endif %}
         <a class="button ghost" href="{% url 'teams:home' %}">Back to events</a>
     </div>
 </section>
@@ -123,53 +128,60 @@
             <p class="muted">No venue set for this event.</p>
         {% endif %}
     </div>
-    <div class="card">
-        <h2>Players signed up</h2>
-        {% if signups_yes %}
-            <ul class="player-list">
-                {% for signup in signups_yes %}
-                    <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="muted">No one has booked yet.</p>
-        {% endif %}
-    </div>
-    <div class="card">
-        <h2>Waitlist</h2>
-        {% if signups_waitlist %}
-            <ul class="player-list">
-                {% for signup in signups_waitlist %}
-                    <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="muted">No one is waiting yet.</p>
-        {% endif %}
-    </div>
-    <div class="card">
-        <h2>Maybe</h2>
-        {% if signups_maybe %}
-            <ul class="player-list">
-                {% for signup in signups_maybe %}
-                    <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="muted">No maybes yet.</p>
-        {% endif %}
-    </div>
-    <div class="card">
-        <h2>No</h2>
-        {% if signups_no %}
-            <ul class="player-list">
-                {% for signup in signups_no %}
-                    <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="muted">No responses yet.</p>
-        {% endif %}
-    </div>
+    {% if show_signup_lists %}
+        <div class="card">
+            <h2>Players signed up</h2>
+            {% if signups_yes %}
+                <ul class="player-list">
+                    {% for signup in signups_yes %}
+                        <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">No one has booked yet.</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h2>Waitlist</h2>
+            {% if signups_waitlist %}
+                <ul class="player-list">
+                    {% for signup in signups_waitlist %}
+                        <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">No one is waiting yet.</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h2>Maybe</h2>
+            {% if signups_maybe %}
+                <ul class="player-list">
+                    {% for signup in signups_maybe %}
+                        <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">No maybes yet.</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h2>No</h2>
+            {% if signups_no %}
+                <ul class="player-list">
+                    {% for signup in signups_no %}
+                        <li>{{ signup.user.get_full_name|default:signup.user.username }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">No responses yet.</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="card">
+            <h2>Player responses</h2>
+            <p class="muted">Log in to view who has responded.</p>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}
