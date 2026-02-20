@@ -65,7 +65,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'teams',
+    'teams.apps.TeamsConfig',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -164,7 +164,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
-SITE_ID = 1
+SITE_ID = None
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
@@ -183,6 +183,7 @@ SOCIALACCOUNT_ADAPTER = "teams.social_adapters.SocialAccountAdapter"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = env_str(
     "ACCOUNT_DEFAULT_HTTP_PROTOCOL", "http" if DEBUG else "https"

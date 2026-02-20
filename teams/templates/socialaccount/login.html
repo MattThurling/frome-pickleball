@@ -1,0 +1,38 @@
+{% extends "teams/base.html" %}
+{% load i18n %}
+
+{% block title %}Continue{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        {% if process == "connect" %}
+            <p class="kicker">Connect account</p>
+            <h1>Connect {{ provider.name }}</h1>
+            <p class="muted">You're about to connect your {{ provider.name }} account.</p>
+        {% else %}
+            <p class="kicker">One moment</p>
+            <h1>Signing you in</h1>
+            <p class="muted">Redirecting to {{ provider.name }}.</p>
+        {% endif %}
+    </div>
+</section>
+
+<form method="post" class="form-card form-narrow" id="social-continue">
+    {% csrf_token %}
+    <div class="form-actions">
+        <button class="button" type="submit">Continue</button>
+        {% if process == "connect" %}
+            <a class="button ghost" href="{% url 'account_login' %}">Back</a>
+        {% endif %}
+    </div>
+</form>
+
+<script>
+    (function () {
+        var form = document.getElementById("social-continue");
+        if (!form) return;
+        form.submit();
+    })();
+</script>
+{% endblock %}

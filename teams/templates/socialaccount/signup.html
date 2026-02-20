@@ -1,0 +1,35 @@
+{% extends "teams/base.html" %}
+{% load i18n %}
+
+{% block title %}Finish sign up{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="kicker">Almost there</p>
+        <h1>Finish signing up</h1>
+        <p class="muted">
+            You're using your {{ account.get_provider.name }} account to sign in to {{ site.name }}.
+        </p>
+    </div>
+</section>
+
+<form method="post" action="{% url 'socialaccount_signup' %}" class="form-card form-narrow">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+        {% for field in form %}
+            <label>
+                {{ field.label }}
+                {{ field }}
+                {{ field.errors }}
+            </label>
+        {% endfor %}
+    </div>
+    {{ redirect_field }}
+    <div class="form-actions">
+        <button class="button" type="submit">Continue</button>
+        <a class="button ghost" href="{% url 'account_login' %}">Back to login</a>
+    </div>
+</form>
+{% endblock %}
