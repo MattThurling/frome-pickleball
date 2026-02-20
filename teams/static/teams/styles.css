@@ -456,6 +456,60 @@ main {
     margin-bottom: 20px;
 }
 
+.social-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.social-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(30, 27, 22, 0.12);
+}
+
+.social-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    display: block;
+}
+
+.social-button svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.social-button.google {
+    background: #ffffff;
+    border-color: #dadce0;
+    color: #3c4043;
+}
+
+.social-button.google:hover {
+    background: #f8f9fa;
+}
+
+.social-button.facebook {
+    background: #1877f2;
+    border-color: #1877f2;
+    color: #ffffff;
+}
+
+.social-button.facebook .social-icon {
+    fill: #ffffff;
+}
+
+.social-button.facebook:hover {
+    background: #166fe5;
+}
+
 .divider {
     text-align: center;
     color: var(--muted);
